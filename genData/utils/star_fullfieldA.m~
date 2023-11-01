@@ -1,0 +1,33 @@
+function Amat = star_fullfiledA(n_data,X,Y,grid_edge,seeds_file)
+
+addpath(genpath('..'));
+load(seeds_file)
+
+filename = ['star_inc_data_24/data_info.mat'];
+load(filename)
+
+[X,Y] = meshgrid(x_grid,y_grid);
+grid_edge = length(x_grid);
+X = reshape(X,grid_edge^2,1);
+Y = reshape(Y,grid_edge^2,1);
+N_nodes = grid_edge^2;
+
+load star_inc_A_data.mat
+
+
+    save_name = ['star_inc_data_24/sq_inc_data_24_A_' num2str(i,'%5d') '.mat'];
+    params = A_params_all(:,i);
+    xis = xis_all(:,i);
+
+    A_cells = arrayfun(@(i) A_star_inc([X(i),Y(i)],xis,params(1),params(2),params(3),params(4),params(5),params(6)),1:N_nodes,'UniformOutput',false); % (dim(A) x N_elem)
+    A_mat = cell2mat(A_cells);
+    A_mat = reshape(A_mat,2,2,N_nodes); % A dim 1 x N_data x A dim 2 x N_nodes
+    
+    
+    save(save_name, 'A_mat')
+
+    
+%     imagesc(x_grid,y_grid,reshape(A_mat(1,1,:),grid_edge,grid_edge))
+
+
+end
