@@ -1,0 +1,38 @@
+/home/mtrautne/LearningHomogenization/jobScripts
+hpc-80-04.cm.cluster
+Wed Nov  1 11:40:19 PDT 2023
+CPUs per task: 12
+MATLAB is selecting SOFTWARE OPENGL rendering.
+
+                            < M A T L A B (R) >
+                  Copyright 1984-2020 The MathWorks, Inc.
+              R2020a Update 4 (9.8.0.1417392) 64-bit (glnxa64)
+                               June 24, 2020
+
+ 
+To get started, type doc.
+For product information, visit www.mathworks.com.
+ 
+Starting parallel pool (parpool) using the 'local' profile ...
+Connected to the parallel pool (number of workers: 12).
+
+ans = 
+
+ ProcessPool with properties: 
+
+            Connected: true
+           NumWorkers: 12
+              Cluster: local
+        AttachedFiles: {}
+    AutoAddClientPath: true
+          IdleTimeout: 30 minutes (30 minutes remaining)
+          SpmdEnabled: true
+
+{Error using internal.parallel.parfor.sliced_fcnhdl_check (line 9)
+The sliced variable 'A_fullfield_func' must not be a function handle. To call
+the function handle in a parfor-loop, use "feval(A_fullfield_func, args)". For
+more information, see Parallel Computing Toolbox, "parfor".
+
+Error in data_solver (line 78)
+parfor n_data = 1:N_data
+} 
