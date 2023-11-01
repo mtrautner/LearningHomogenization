@@ -1,4 +1,4 @@
-function data_solver(seeds_file,A_mats_func,A_fullfield_func,h,N_data,grid_edge,save_dir,plot_bool)
+function data_solver(seeds_file,A_mats_func,A_fullfield_func,h,N_data,grid_edge,save_dir)
 
 % Define the domain and discretize into elements
 % Basic method adapted from https://www.particleincell.com/2012/matlab-fem/
@@ -18,7 +18,7 @@ addpath(genpath('utils'));
 % grid_edge = 128; % Adjust this to change interpolation grid size 
 % filename_info = ['data/smooth_data/data_info.mat']; % Adjust where the data info is saved
 % filename_data = 'data/smooth_data/smooth_data_'; % prefix for where data is saved
-% plot_sol_bool = 0; % Set to 1 if you want to plot the solution 
+
 %%%%%% Note about plots: 
 
 %%%%%% the LHS and RHS and Error computations do not consider
@@ -208,14 +208,11 @@ for n_data = 1:N_data
     filename = strcat(save_dir,'data_', num2str(n_data,'%5d'),'.mat');
     
     % Get fullfield A values on the interpolation grid
-    Avals = A_fullfield_func(n_data,X,Y,grid_edge,seeds_file);
+    Avals = feval(A_fullfield_func,n_data,X,Y,grid_edge,seeds_file);
     parsave(filename, Avals, interp_chi1, interp_chi2);
     
 
 end
 
-if plot_bool
-    plot_solutions(filename_info,Avals,interp_chi1,interp_chi2);
-end
 
 end
