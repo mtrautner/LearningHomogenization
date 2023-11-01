@@ -1,4 +1,8 @@
 function plot_solutions(filename_info,Avals,interp_chi1,interp_chi2)
+
+    %%% Example Usage: 
+    % load data/vor_data/data_3.mat
+    % plot_solutions('data/vor_data/data_info.mat',Avals,chi1_interp,chi2_interp)
     addpath(genpath('..'));
     load(filename_info);
     
