@@ -25,3 +25,16 @@ Star: >> data_solver('data_seeds/star_inc_seeds.mat',@star_Amats,@star_fullfield
 Square: >> data_solver('data_seeds/sq_inc_seeds.mat',@sq_Amats,@sq_fullfieldA,0.005,10000,128,'data/sq_data/')
 
 Voronoi: >> data_solver('data_seeds/vor_seeds.mat',@vor_Amats,@vor_fullfieldA,0.005,10000,128,'data/vor_data/')
+
+## Preprocess Data
+The .mat files must be converted to .pkl files. To do so, run preprocess_mat_to_pkl.py in trainModels/util
+with four arguments: 
+arg1: directory of .mat data
+arg2: directory to save .pkl data
+arg3: name of .pkl file
+arg4: N_data
+
+This will also create a smaller .pkl file of just 20 data samples for easy debugging. 
+
+# Train Model
+

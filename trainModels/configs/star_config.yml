@@ -1,7 +1,7 @@
 ---
 # Data information
-data_path: '/groups/astuart/mtrautne/learnHomData/data/smooth_data.pkl'
-model_name: 'smooth_model'
+data_path: '/groups/astuart/mtrautne/learnHomData/data/star_data.pkl'
+model_name: 'star_model'
 
 
 # Parameters for training

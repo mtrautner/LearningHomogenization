@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+
 """
-Originally Adapted from: https://github.com/zongyi-li/fourier_neural_operator/blob/master/utilities3.py
-Then adapted from: https://github.com/nickhnelsen/FourierNeuralMappings 
+First three functions adapted from https://github.com/zongyi-li/fourier_neural_operator/blob/master/utilities3.py
+and https://github.com/nickhnelsen/FourierNeuralMappings 
 
 """
 
@@ -13,6 +12,7 @@ import numpy as np
 import scipy.io
 # import hdf5storage
 import pdb
+import yaml
 
 #################################################
 #
@@ -31,23 +31,6 @@ def to_torch(x, to_float=True):
             x = x.astype(np.float32)
     return torch.from_numpy(x)
 
-
-# def validate(f, fhat):
-#     '''
-#     Helper function to compute relative L^2 error of approximations.
-#     Takes care of different array shape interpretations in numpy.
-
-#     INPUTS:
-#             f : array of high-fidelity function values
-#          fhat : array of approximation values
-
-#     OUTPUTS:
-#         error : float, relative error
-#     '''
-#     f, fhat = np.asarray(f).flatten(), np.asarray(fhat).flatten()
-#     return np.linalg.norm(f-fhat) / np.linalg.norm(f)
-
-
 def dataset_with_indices(cls):
     """
     Modifies the given Dataset class to return a tuple data, target, index
@@ -61,99 +44,6 @@ def dataset_with_indices(cls):
 
     return type(cls.__name__, (cls,), {'__getitem__': __getitem__,})
 
-
-# class MatReader(object):
-#     """
-#     reading data
-#     """
-#     def __init__(self, file_path, to_torch=True, to_cuda=False, to_float=True,
-#                  variable_names=None):
-#         super(MatReader, self).__init__()
-
-#         self.file_path = file_path
-#         self.to_torch = to_torch
-#         self.to_cuda = to_cuda
-#         self.to_float = to_float
-#         self.variable_names = variable_names    # a list of strings (key values in mat file)
-
-#         self.data = None
-#         self.old_mat = None
-#         self._load_file()
-
-#     def _load_file(self):
-#         try:
-#             self.data = scipy.io.loadmat(self.file_path, variable_names=self.variable_names)
-#             self.old_mat = True
-#         except:
-#             self.data = hdf5storage.loadmat(self.file_path, variable_names=self.variable_names)
-#             self.old_mat = False
-
-#     def load_file(self, file_path):
-#         self.file_path = file_path
-#         self._load_file()
-
-#     def read_field(self, field):
-#         x = self.data[field]
-#         if self.to_float:
-#             if np.iscomplexobj(x):
-#                 x = x.astype(np.complex64)
-#             else:
-#                 x = x.astype(np.float32)
-#         if self.to_torch:
-#             x = torch.from_numpy(x)
-#             if self.to_cuda:
-#                 x = x.cuda()
-#         return x
-
-#     def set_cuda(self, to_cuda):
-#         self.to_cuda = to_cuda
-
-#     def set_torch(self, to_torch):
-#         self.to_torch = to_torch
-
-#     def set_float(self, to_float):
-#         self.to_float = to_float
-
-
-# class UnitGaussianNormalizer(object):
-#     """
-#     normalization, pointwise gaussian
-#     """
-#     def __init__(self, x, eps=1e-6):
-#         super(UnitGaussianNormalizer, self).__init__()
-
-#         # x has sample/batch size as first dimension (could be ntrain*n or ntrain*T*n or ntrain*n*T)
-#         self.mean = torch.mean(x, 0)
-#         self.std = torch.std(x, 0)
-#         self.eps = eps
-
-#     def encode(self, x):
-#         x = (x - self.mean) / (self.std + self.eps)
-#         return x
-
-#     def decode(self, x, sample_idx=None):
-#         if sample_idx is None:
-#             std = self.std + self.eps # n
-#             mean = self.mean
-#         else:
-#             if len(self.mean.shape) == len(sample_idx[0].shape):
-#                 std = self.std[sample_idx] + self.eps  # batch*n
-#                 mean = self.mean[sample_idx]
-#             if len(self.mean.shape) > len(sample_idx[0].shape):
-#                 std = self.std[:,sample_idx]+ self.eps # T*batch*n
-#                 mean = self.mean[:,sample_idx]
-
-#         # x is in shape of batch*n or T*batch*n
-#         x = (x * std) + mean
-#         return x
-
-#     def cuda(self):
-#         self.mean = self.mean.cuda()
-#         self.std = self.std.cuda()
-
-#     def cpu(self):
-#         self.mean = self.mean.cpu()
-#         self.std = self.std.cpu()
 class H1Loss(object):
     """
     loss function with rel/abs H1 loss
@@ -303,7 +193,8 @@ class Sobolev_Loss(object):
     
     def Lp_norm(self,x):
         num_examples = x.size()[0]
-        return torch.norm(x.reshape(num_examples,-1), self.p, dim=1)
+        h = 1.0 / (x.size()[-1] - 1.0)
+        return torch.norm(x.reshape(num_examples,-1), self.p, dim=1)*h**(self.d/self.p)
     
     def Lp_err(self,x,y):
         return self.Lp_norm(x-y)
@@ -331,38 +222,95 @@ def count_params(model):
                     list(p.size()+(2,) if p.is_complex() else p.size()))
     return c
 
+def convert_A_to_matrix_shape(A):
+    '''
+    input shape is (num_examples,3,grid_edge,grid_edge)
+    output shape is (num_examples,2,2,grid_edge,grid_edge)
+    '''
+    # Add off-diagonal entry back to A
+    num_examples = A.size()[0]
+    grid_edge = A.size()[-1]
+    off_diag = A[:,1,:,:].unsqueeze(1)
+    A = torch.cat((A[:,:2,:,:],off_diag,A[:,2:,:,:]),1)
+    A = torch.reshape(A,(num_examples,2,2,grid_edge,grid_edge))
+    return A
+
 def compute_Abar(A, chi):
     '''
     Computes Abar from A and chi
     Abar = \int_{\Td} (A + A\grad\chi^T) dx
-    chi has shape (num_examples, channels_out, grid_edge, grid_edge)
-    A has shape (num_examples, 3, grid_edge, grid_edge)
-    '''
+    chi has shape (num_examples, 2, grid_edge, grid_edge)
+    A has shape (num_examples, 2,2, grid_edge, grid_edge)
+
+    Returns Abar of shape (num_examples, 2,2)
     '''
     num_examples = chi.size()[0]
     grid_edge = chi.size()[-1]
     h = 1.0 / (grid_edge - 1.0)
     
-    # Add off-diagonal entry back to A
-    off_diag = A[:,2,:,:].unsqueeze(1)
-    A = torch.cat((A[:,:2,:,:],off_diag,A[:,:2,:,:]),1)
-    
     # Compute grad chi
     chi_grad = torch.gradient(chi, dim = (-2,-1), spacing = h)
     chi_grad1 = chi_grad[0].unsqueeze(1) # Component 1 of the gradient
     chi_grad2 = chi_grad[1].unsqueeze(1) # Component 2 of the gradient
-    chi_grad = torch.cat((x_grad1, x_grad2), 1)
+    chi_grad = torch.cat((chi_grad1, chi_grad2), 1)
 
     # Compute integrand
-    integrand = [[A[n,:,:,:]]]
+    # Multiply A (axes 1 and 2) by chi_grad (axis 1)
+    integrand = A + torch.einsum('iablm,ibdlm->iadlm',A,chi_grad) 
+    Abars = torch.sum(integrand, dim = (-2,-1))*h**2
+    return Abars
+
+def frob_arithmetic_mean_A(A):
+    '''
+    A has shape (num_examples, 2,2, grid_edge, grid_edge)
+    '''
+    h = 1.0 / (A.size()[-1] - 1.0)
+    mean_A = torch.sum(A,dim = (-2,-1))*h**2
+    return torch.norm(mean_A, 'fro', dim = (1,2))
+
+def frob_harm_mean_A(A):
+    '''
+    A has shape (num_examples, 2,2, grid_edge, grid_edge)
+    '''
+    h = 1.0 / (A.size()[-1] - 1.0)
+    A = torch.reshape(A,(A.size()[0],2,2,-1))
+    inverses = np.array([np.array([np.linalg.inv(A[i,:,:,j]) for i in range(A.size()[0])]) for j in range(A.size()[3])])
+    inverses = torch.from_numpy(inverses).float()
+    harm_mean_A = torch.sum(inverses,dim = (0))*h**2
+    inv_har_mean_A = np.array([np.linalg.inv(harm_mean_A[i,:,:]) for i in range(harm_mean_A.size()[0])])
+    torch_inv_har_mean_A = torch.from_numpy(inv_har_mean_A).float()
+    return torch.norm(torch_inv_har_mean_A, 'fro', dim = (1,2))
+
+
+def compute_Abar_error(A,chi_true,chi_hat):
+    '''
+    A has shape (num_examples, 2,2, grid_edge, grid_edge)
+    returns Abar_rel_error scaled by true frob norm
+    returns Abar_rel_error2 scaled by a_m - a_h
+    '''
+    Abars_true = compute_Abar(A,chi_true)
+    Abars_hat = compute_Abar(A,chi_hat)
+    Aharms = frob_harm_mean_A(A)
+    Ameans = frob_arithmetic_mean_A(A)
+
+    Abar_abs_error = torch.norm(Abars_true - Abars_hat, 'fro', dim = (1,2))
+    true_frob_norm = torch.norm(Abars_true, 'fro', dim = (1,2))
+    Abar_rel_error = Abar_abs_error/true_frob_norm
+
+    Abar_rel_error2 = Abar_abs_error/(Ameans - Aharms)
+
+    return Abar_rel_error, Abar_rel_error2
 
 
 
 
+def loss_report(y_hat, y_true, A_true, model_path):
+    '''
+    A_true shape is (num_examples,3,grid_edge,grid_edge)
+    y_true shape is (num_examples,2,grid_edge,grid_edge)
+    '''
+    A = convert_A_to_matrix_shape(A_true)
 
-
-
-def loss_report(y_hat, y_true, A_true, model_name):
     H1_loss_func = Sobolev_Loss(p = 2)
     W1_10_loss_func = Sobolev_Loss(p = 10)
 
@@ -381,4 +329,24 @@ def loss_report(y_hat, y_true, A_true, model_name):
     W1_10_med = torch.median(W1_10_losses)
     W1_10_rel_mean = torch.mean(W1_10_rel_losses)
     W1_10_rel_med = torch.median(W1_10_rel_losses)
+
+    Abar_rel_error, Abar_rel_error2 = compute_Abar_error(A,y_true,y_hat)
+
+    # Make dictionary of the errors
+    errors = {}
+    errors['H1_mean'] = H1_mean
+    errors['H1_med'] = H1_med
+    errors['H1_rel_mean'] = H1_rel_mean
+    errors['H1_rel_med'] = H1_rel_med
+    errors['W1_10_mean'] = W1_10_mean
+    errors['W1_10_med'] = W1_10_med
+    errors['W1_10_rel_mean'] = W1_10_rel_mean
+    errors['W1_10_rel_med'] = W1_10_rel_med
+    errors['Abar_rel_error_med'] = torch.median(Abar_rel_error)
+    errors['Abar_rel_error2_med'] = torch.median(Abar_rel_error2)
+
+    json_errors = {k: v.item() for k, v in errors.items()}
+    # Save dictionary to json file
+    with open(model_path+ '_errors.yml', 'w') as fp:
+        yaml.dump(json_errors, fp)
 

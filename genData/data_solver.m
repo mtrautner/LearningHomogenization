@@ -73,9 +73,9 @@ X = reshape(X,grid_edge^2,1);
 Y = reshape(Y,grid_edge^2,1);
 filename_info = strcat(save_dir,'data_info.mat');
 save(filename_info, 'x_grid', 'y_grid', 'p', 't')
-% parpool(6) %%%% This enforces running in parallel. To make not parallel, comment out and change the parfor below to "for"
+parpool(12) %%%% This enforces running in parallel. To make not parallel, comment out and change the parfor below to "for"
 
-for n_data = 1:N_data
+parfor n_data = 1:N_data
 
     F1 = zeros(N_node,1); % RHS
     F2 = zeros(N_node,1);

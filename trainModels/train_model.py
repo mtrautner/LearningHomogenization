@@ -11,13 +11,25 @@ import sys
 import torch.utils.data
 from tqdm import tqdm
 import yaml
+import json
 
 
 from models.func_to_func2d import FNO2d
-from util.utilities_module import H1Loss
-from util.utilities_module import loss_report
+from util.utilities_module import *
 
-def train_model(data_path, model_name, Ntotal = 10000,N_train = 9500, N_modes = 24, width = 48, epochs = 300, b_size = 50, lr = 0.001, USE_CUDA = True): 
+def train_model(config):
+    # Take in user arguments
+    data_path = config['data_path']
+    model_name = config['model_name']
+    Ntotal = config['Ntotal']
+    N_train = config['N_train']
+    N_modes = config['N_modes']
+    width = config['width']
+    epochs = config['epochs']
+    b_size = config['batch_size']
+    lr = config['lr']
+    USE_CUDA = config['USE_CUDA']
+
     gc.collect()
     torch.cuda.empty_cache()
 
@@ -142,21 +154,25 @@ def train_model(data_path, model_name, Ntotal = 10000,N_train = 9500, N_modes = 
         print(ep, train_err[ep],test_err[ep])
 
     # Save model
-    model_path = 'Trained_Models/' + model_name
+    model_path = 'trainedModels/' + model_name
     torch.save({'epoch': epochs,
-            'model_state_dict': model.state_dict(),
+            'model_state_dict': net.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'train_loss_history': train_err,
             'test_loss_history': test_err,
             }, model_path)
 
     # Save model info
-    model_info_path = 'Trained_Models/' + model_name + '_info.pkl'
-    with open(model_info_path, 'wb') as handle:
-        pkl.dump([Ntotal, N_train, N_modes, width, epochs, b_size, lr, x_ticks, y_ticks,data_path], handle)
+    model_info_path = 'trainedModels/' + model_name + '_config.yml'
+    # save model config
+    # convert config to a dict that will be readable when saved as a .json
     
+    with open(model_info_path, 'w') as fp:
+        yaml.dump(config, fp)
+
     # Compute and save errors
-    loss_report(y_test_approx_all, y_test, x_test, model_name)
+    model_path = 'trainedModels/' + model_name
+    loss_report(y_test_approx_all, y_test, x_test, model_path)
     
 
 if __name__ == "__main__":
@@ -165,4 +181,9 @@ if __name__ == "__main__":
     with open(config_path, 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    train_model(config['data_path'], config['model_name'], Ntotal = config['Ntotal'], N_train = config['N_train'], N_modes = config['N_modes'], width = config['width'], epochs = config['epochs'], b_size = config['batch_size'], lr = config['lr'], USE_CUDA = config['USE_CUDA'])
+    # Check if there's a second argument
+    if len(sys.argv) > 2:
+        model_index = sys.argv[2]
+        config['model_name'] = config['model_name'] + '_' + str(model_index)
+    
+    train_model(config)
