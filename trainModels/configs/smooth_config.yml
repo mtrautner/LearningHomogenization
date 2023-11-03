@@ -1,0 +1,15 @@
+---
+# Data information
+data_path = '/groups/astuart/mtrautne/learnHom/data/smooth_data/smooth_data_tiny.pkl'
+model_name = 'smooth_model_tiny'
+
+
+# Parameters for training
+Ntotal: 10000
+N_train: 9500
+N_modes: 24
+width: 48
+epochs: 300
+batch_size: 50
+lr: 0.001
+USE_CUDA: True
