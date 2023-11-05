@@ -4,8 +4,8 @@ N_data = 10000;
 ks = linspace(1,K,K);
 thetas = linspace(0,2*pi,200);
 for n_data = 1:N_data
-    xis = randn(K,1);
-    phiks = 0.03*sin(ks'*thetas);
+    xis = 2*rand(K,1)-1;
+    phiks = 0.04*sin(ks'*thetas);
     phi_sum = 0.25+ xis'*phiks;
 end
 
@@ -17,7 +17,7 @@ r = 0.02 + (0.48-0.02)*rand(1); % radius of square inclusion between (0.02, 0.48
 a11 = 0; a12= 0; a22= 0; a33 = 0; a34 = 0; a44 = 0; 
 
 for n_data = 1:N_data
-    xis = randn(K,1);
+    xis = 2*rand(K,1)-1;
     for i = [1,2]
         eig1 = 0.1+ rand(1);
         eig2 = 0.1 + rand(1);

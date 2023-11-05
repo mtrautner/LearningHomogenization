@@ -4,7 +4,7 @@ function a_mat = A_star_inc(node_coords,xis,a11,a12,a22,a33,a34,a44)
     K = 5; 
     ks = linspace(1,K,K);
     [theta, rho] = cart2pol(x,y);
-    rho_cutoff = 0.25+ xis'.*0.03*sin(ks'*theta);
+    rho_cutoff = 0.25+ xis'.*0.04*sin(ks'*theta);
     
     if rho < rho_cutoff
 %         a_mat = [10,3;3,10]; 
