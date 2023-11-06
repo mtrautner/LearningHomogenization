@@ -15,12 +15,12 @@ xis_all = zeros(5,N_data);
 A_params_all = zeros(6,N_data);
 r = 0.02 + (0.48-0.02)*rand(1); % radius of square inclusion between (0.02, 0.48)
 a11 = 0; a12= 0; a22= 0; a33 = 0; a34 = 0; a44 = 0; 
-
+E = exp(1);
 for n_data = 1:N_data
     xis = 2*rand(K,1)-1;
     for i = [1,2]
-        eig1 = 0.1+ rand(1);
-        eig2 = 0.1 + rand(1);
+        eig1 = 1/E+ (E-1/E)*rand(1);
+        eig2 = 1/E + (E-1/E)*rand(1);
         eigvecs = randn(2);
         eigvecs(2,2) = -eigvecs(1,1)*eigvecs(1,2)/eigvecs(2,1);
         eigvecs = eigvecs./(vecnorm(eigvecs));
