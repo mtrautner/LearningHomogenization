@@ -8,6 +8,8 @@ N_nodes = grid_edge^2;
 point_N = vorCell{n_data,1};
 points = vorCell{n_data,2};
 a11s = vorCell{n_data,3};
+a12s = vorCell{n_data,4};
+a22s = vorCell{n_data,5};
 
 all_points = zeros(point_N*9,2);
     counter = 0;
@@ -23,8 +25,6 @@ all_points = zeros(point_N*9,2);
 pcas_grid = dsearchn(all_points,[X';Y']');
 pcas_grid = mod(pcas_grid,point_N) + 1;
 
-    a22s = a11s; 
-    a12s = 0*a11s; 
   
     
     A_grid = arrayfun(@(i) [a11s(pcas_grid(i)), a12s(pcas_grid(i)); a12s(pcas_grid(i)), a22s(pcas_grid(i))], 1:length(X),'UniformOutput',false); % (dim(A) x N_elem)

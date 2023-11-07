@@ -7,7 +7,8 @@ function A_mats = vor_Amats(n_data,centers,seeds_file)
     point_N = vorCell{n_data,1};
     points = vorCell{n_data,2};
     a11s = vorCell{n_data,3};
-    
+    a12s = vorCell{n_data,4};
+    a22s = vorCell{n_data,5};
     all_points = zeros(point_N*9,2);
     counter = 0;
     for i = [0,1,-1]
@@ -21,9 +22,7 @@ function A_mats = vor_Amats(n_data,centers,seeds_file)
     pcas = dsearchn(all_points,squeeze(centers));
     pcas = mod(pcas,point_N) + 1;
     
-    
-    a22s = a11s; 
-    a12s = 0*a11s; 
+   
   
     A_mats = arrayfun(@(i) [a11s(pcas(i)), a12s(pcas(i)); a12s(pcas(i)), a22s(pcas(i))], 1:N_elem,'UniformOutput',false); 
     

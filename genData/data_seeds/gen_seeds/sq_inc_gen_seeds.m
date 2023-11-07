@@ -28,3 +28,5 @@ for n_data = 1:N_data
 end
 
 save ../sq_inc_seeds.mat params_all
+params_all = params_all(:,9501:end);
+save ../sq_inc_seeds_test_only.mat params_all

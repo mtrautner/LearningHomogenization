@@ -42,3 +42,7 @@ for n_data = 1:N_data
 end
 
 save ../star_inc_seeds.mat xis_all A_params_all
+
+xis_all = xis_all(:,9501:end);
+A_params_all = A_params_all(:,9501:end);
+save ../star_inc_seeds_test_only.mat xis_all A_params_all
