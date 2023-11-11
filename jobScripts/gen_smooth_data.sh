@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 
-#SBATCH --time=00:15:00   # walltime
+#SBATCH --time=20:00:00   # walltime
 #SBATCH --ntasks=1         # number of processor cores (i.e. tasks)
 #SBATCH --nodes=1         # number of nodes
 #SBATCH --cpus-per-task=12
@@ -22,5 +22,5 @@ module load matlab/r2020a
 
 cd ../genData
 
-matlab -r "data_solver('data_seeds/smooth_seeds.mat',@smooth_Amats,@smooth_fullfieldA,0.005,6,128,'/groups/astuart/mtrautne/learnHomData/mat_data/smooth_data/',0)"
+matlab -r "data_solver('data_seeds/smooth_seeds.mat',@smooth_Amats,@smooth_fullfieldA,0.005,10000,128,'/groups/astuart/mtrautne/learnHomData/mat_data/smooth_data/')"
 

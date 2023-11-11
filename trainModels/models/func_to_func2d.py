@@ -1,15 +1,9 @@
-'''
-Adapted from https://github.com/nickhnelsen/FourierNeuralMappings 
-'''
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import sys
 
+from .shared import SpectralConv2d, projector2d, get_grid2d, _get_act, MLP
 
-sys.path.insert(1, './models/')
-from shared import *
 
 class FNO2d(nn.Module):
     """
@@ -22,8 +16,11 @@ class FNO2d(nn.Module):
                  s_outputspace=None,
                  width_final=128,
                  padding=8,
-                 d_in=2, # TODO: adjust default to 1, check this does not break train scripts
-                 d_out=1
+                 d_in=1,
+                 d_out=1,
+                 act='gelu',
+                 n_layers=4,
+                 get_grid=True
                  ):
         """
         modes1, modes2  (int): Fourier mode truncation levels
@@ -33,6 +30,9 @@ class FNO2d(nn.Module):
         padding         (int or float): (1.0/padding) is fraction of domain to zero pad (non-periodic)
         d_in            (int): number of input channels (NOT including grid input features)
         d_out           (int): number of output channels (co-domain dimension of output space functions)
+        act             (str): Activation function = tanh, relu, gelu, elu, or leakyrelu
+        n_layers        (int): Number of Fourier Layers, by default 4
+        get_grid        (bool): Whether or not append grid coordinate as a feature for the input
         """
         super(FNO2d, self).__init__()
 
@@ -43,24 +43,28 @@ class FNO2d(nn.Module):
         self.width_final = width_final
         self.padding = padding
         self.d_in = d_in
-        self.d_out = d_out 
+        self.d_out = d_out
+        self.act = _get_act(act)
+        self.n_layers = n_layers
+        self.get_grid = get_grid
+        if self.n_layers is None:
+            self.n_layers = 4
         
         self.set_outputspace_resolution(s_outputspace)
 
-        self.fc0 = nn.Linear(self.d_in + self.d_physical, self.width)
+        self.fc0 = nn.Linear((self.d_in + self.d_physical if get_grid else self.d_in), self.width)
+        
+        self.speconvs = nn.ModuleList([
+            SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
+                for _ in range(self.n_layers)]
+            )
 
-        self.conv0 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
-        self.conv1 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
-        self.conv2 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
-        self.conv3 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
+        self.ws = nn.ModuleList([
+            nn.Conv2d(self.width, self.width, 1)
+                for _ in range(self.n_layers)]
+            )
 
-        self.w0 = nn.Conv2d(self.width, self.width, 1)
-        self.w1 = nn.Conv2d(self.width, self.width, 1)
-        self.w2 = nn.Conv2d(self.width, self.width, 1)
-        self.w3 = nn.Conv2d(self.width, self.width, 1)
-
-        self.fc1 = nn.Linear(self.width, self.width_final)
-        self.fc2 = nn.Linear(self.width_final, self.d_out)
+        self.mlp0 = MLP(self.width, self.width_final, self.d_out, act)
 
     def forward(self, x):
         """
@@ -73,7 +77,8 @@ class FNO2d(nn.Module):
         # Lifting layer
         x_res = x.shape[-2:]
         x = x.permute(0, 2, 3, 1)
-        x = torch.cat((x, get_grid2d(x.shape, x.device)), dim=-1)    # grid ``features''
+        if self.get_grid:
+            x = torch.cat((x, get_grid2d(x.shape, x.device)), dim=-1)   # grid ``features''
         x = self.fc0(x)
         x = x.permute(0, 3, 1, 2)
         
@@ -81,29 +86,23 @@ class FNO2d(nn.Module):
         x = F.pad(x, [0, x_res[-1]//self.padding, 0, x_res[-2]//self.padding])
 
         # Fourier integral operator layers on the torus
-        x = self.w0(x) + self.conv0(x)
-        x = F.gelu(x)
-
-        x = self.w1(x) + self.conv1(x)
-        x = F.gelu(x)
-
-        x = self.w2(x) + self.conv2(x)
-        x = F.gelu(x)
-
-        # Change resolution in function space consistent way
-        x = self.w3(projector2d(x, s=self.s_outputspace)) + self.conv3(x, s=self.s_outputspace)
+        for idx_layer, (speconv, w) in enumerate(zip(self.speconvs, self.ws)):
+            if idx_layer != self.n_layers - 1:
+                x = w(x) + speconv(x)
+                x = self.act(x)
+            else:
+                # Change resolution in function space consistent way
+                x = w(projector2d(x, s=self.s_outputspace)) + speconv(x, s=self.s_outputspace)
 
         # Map from the torus into the output domain
         if self.s_outputspace is not None:
             x = x[..., :-self.num_pad_outputspace[-2], :-self.num_pad_outputspace[-1]]
         else:
-            x = x[..., :-x_res[-2]//self.padding, :-x_res[-1]//self.padding]
+            x = x[..., :-(x_res[-2]//self.padding), :-(x_res[-1]//self.padding)]
         
         # Final projection layer
         x = x.permute(0, 2, 3, 1)
-        x = self.fc1(x)
-        x = F.gelu(x)
-        x = self.fc2(x)
+        x = self.mlp0(x)
 
         return x.permute(0, 3, 1, 2)
 

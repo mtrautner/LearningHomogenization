@@ -1,11 +1,48 @@
-'''
-Adapted from https://github.com/nickhnelsen/FourierNeuralMappings 
-'''
-
 import torch
 import torch.nn as nn
 import torch.fft as fft
-import math
+import torch.nn.functional as F
+
+
+def _get_act(act):
+    """
+    https://github.com/NeuralOperator/PINO/blob/master/models/utils.py
+    """
+    if act == 'tanh':
+        func = F.tanh
+    elif act == 'gelu':
+        func = F.gelu
+    elif act == 'relu':
+        func = F.relu_
+    elif act == 'elu':
+        func = F.elu_
+    elif act == 'leaky_relu':
+        func = F.leaky_relu_
+    else:
+        raise ValueError(f'{act} is not supported')
+    return func
+
+
+class MLP(nn.Module):
+    """
+    Pointwise single hidden layer fully-connected neural network applied to last axis of input
+    """
+    def __init__(self, channels_in, channels_hid, channels_out, act='gelu'):
+        super(MLP, self).__init__()
+        
+        self.fc1 = nn.Linear(channels_in, channels_hid)
+        self.act = _get_act(act)
+        self.fc2 = nn.Linear(channels_hid, channels_out)
+
+    def forward(self, x):
+        """
+        Input shape (of x):     (..., channels_in)
+        Output shape:           (..., channels_out)
+        """
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.fc2(x)
+        return x
 
 
 def compl_mul(input_tensor, weights):
@@ -14,6 +51,81 @@ def compl_mul(input_tensor, weights):
     (batch, in_channel, ...), (in_channel, out_channel, ...) -> (batch, out_channel, ...), where ``...'' represents the spatial part of the input.
     """
     return torch.einsum("bi...,io...->bo...", input_tensor, weights)
+
+
+################################################################
+#
+# 1d helpers
+#
+################################################################
+def resize_rfft(ar, s):
+    """
+    Truncates or zero pads the highest frequencies of ``ar'' such that torch.fft.irfft(ar, n=s) is either an interpolation to a finer grid or a subsampling to a coarser grid.
+    Args
+        ar: (..., N) tensor, must satisfy real conjugate symmetry (not checked)
+        s: (int), desired irfft output dimension >= 1
+    Output
+        out: (..., s//2 + 1) tensor
+    """
+    N = ar.shape[-1]
+    s = s//2 + 1 if s >=1 else s//2
+    if s >= N: # zero pad or leave alone
+        out = torch.zeros(list(ar.shape[:-1]) + [s - N], dtype=torch.cfloat, device=ar.device)
+        out = torch.cat((ar[..., :N], out), dim=-1)
+    elif s >= 1: # truncate
+        out = ar[..., :s]
+    else: # edge case
+        raise ValueError("s must be greater than or equal to 1.")
+
+    return out
+
+
+def resize_fft(ar, s):
+    """
+    Truncates or zero pads the highest frequencies of ``ar'' such that torch.fft.ifft(ar, n=s) is either an interpolation to a finer grid or a subsampling to a coarser grid.
+    Reference: https://github.com/numpy/numpy/pull/7593
+    Args
+        ar: (..., N) tensor
+        s: (int), desired ifft output dimension >= 1
+    Output
+        out: (..., s) tensor
+    """
+    N = ar.shape[-1]
+    if s >= N: # zero pad or leave alone
+        out = torch.zeros(list(ar.shape[:-1]) + [s - N], dtype=torch.cfloat, device=ar.device)
+        out = torch.cat((ar[..., :N//2], out, ar[..., N//2:]), dim=-1)
+    elif s >= 2: # truncate modes
+        if s % 2: # odd
+            out = torch.cat((ar[..., :s//2 + 1], ar[..., -s//2 + 1:]), dim=-1)
+        else: # even
+            out = torch.cat((ar[..., :s//2], ar[..., -s//2:]), dim=-1)
+    else: # edge case s = 1
+        if s < 1:
+            raise ValueError("s must be greater than or equal to 1.")
+        else:
+            out = ar[..., 0:1]
+
+    return out
+
+
+def get_grid1d(shape, device):
+    """
+    Returns a discretization of the 1D identity function on [0,1]
+    """
+    size_x = shape[1]
+    gridx = torch.linspace(0, 1, size_x)
+    gridx = gridx.reshape(1, size_x, 1).repeat([shape[0], 1, 1])
+    return gridx.to(device)
+
+
+def projector1d(x, s=None):
+    """
+    Either truncate or zero pad the Fourier modes of x so that x has new resolution s (s is int)
+    """
+    if s is not None and s != x.shape[-1]:
+        x = fft.irfft(resize_rfft(fft.rfft(x, norm="forward"), s), n=s, norm="forward")
+        
+    return x
 
 
 ################################################################
@@ -46,21 +158,6 @@ def get_grid2d(shape, device):
     gridy = gridy.reshape(1, 1, size_y, 1).repeat([batchsize, size_x, 1, 1])
     return torch.cat((gridx, gridy), dim=-1).to(device)
 
-def get_grid2d_torus(shape, device):
-    """
-    Returns a discretization of the 2D identity function on \T^2
-    """
-    batchsize, size_x, size_y = shape[0], shape[1], shape[2]
-    gridx = torch.linspace(0, 1, size_x)
-    gridx = gridx.reshape(1, size_x, 1, 1).repeat([batchsize, 1, size_y, 1])
-    gridy = torch.linspace(0, 1, size_y)
-    gridy = gridy.reshape(1, 1, size_y, 1).repeat([batchsize, size_x, 1, 1])
-    gridxtor = torch.sin(2*math.pi*gridx)
-    gridxtorshift = torch.sin(2*math.pi*(gridx + 0.1)) # makes physical info unique
-    gridytor = torch.sin(2*math.pi*gridy)
-    gridytorshift = torch.sin(2*math.pi*(gridy + 0.1))
-    return torch.cat((gridxtor, gridytor), dim=-1).to(device)
-
 
 def projector2d(x, s=None):
     """
@@ -71,6 +168,126 @@ def projector2d(x, s=None):
         
     return x
 
+
+################################################################
+#
+# 1d Fourier layers
+#
+################################################################
+class SpectralConv1d(nn.Module):
+    def __init__(self, in_channels, out_channels, modes1):
+        """
+        Fourier integral operator layer defined for functions over the torus. Maps functions to functions.
+        """
+        super(SpectralConv1d, self).__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        # Number of Fourier modes to multiply, at most floor(N/2) + 1
+        self.modes1 = modes1 
+
+        self.scale = 1. / (self.in_channels * self.out_channels)
+        self.weights1 = nn.Parameter(self.scale * torch.rand(self.in_channels, self.out_channels, self.modes1, dtype=torch.cfloat))
+
+    def forward(self, x, s=None):
+        """
+        Input shape (of x):     (batch, channels, ..., nx_in)
+        s:                      (int): desired spatial resolution (s,) in output space
+        """
+        # Original resolution
+        out_ft = list(x.shape)
+        out_ft[1] = self.out_channels
+        xsize = out_ft[-1]
+        
+        # Compute Fourier coeffcients (un-scaled)
+        x = fft.rfft(x)
+
+        # Multiply relevant Fourier modes
+        out_ft = torch.zeros(*out_ft[:-1], xsize//2 + 1, dtype=torch.cfloat, device=x.device)
+        out_ft[..., :self.modes1] = compl_mul(x[..., :self.modes1], self.weights1)
+
+        # Return to physical space
+        if s is None or s == xsize:
+            x = fft.irfft(out_ft, n=xsize)
+        else:
+            x = fft.irfft(resize_rfft(out_ft, s), n=s, norm="forward") / xsize
+
+        return x
+    
+
+class LinearFunctionals1d(nn.Module):
+    def __init__(self, in_channels, out_channels, modes1):
+        """
+        Fourier neural functionals (encoder) layer for functions over the torus. Maps functions to vectors.
+        Inputs:    
+            in_channels  (int): number of input functions
+            out_channels (int): total number of linear functionals to extract
+        """
+        super(LinearFunctionals1d, self).__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+    
+        # Number of Fourier modes to multiply, at most floor(N/2) + 1
+        self.modes1 = modes1 
+    
+        # Complex conjugation in L^2 inner product is absorbed into parametrization
+        self.scale = 1. / (self.in_channels * self.out_channels)
+        self.weights = nn.Parameter(self.scale * torch.rand(self.in_channels, self.out_channels, self.modes1 + 1, dtype=torch.cfloat))
+
+    def forward(self, x):
+        """
+        Input shape (of x):     (batch, in_channels, ..., nx_in)
+        Output shape:           (batch, out_channels, ...)
+        """
+        # Compute Fourier coeffcients (scaled to approximate integration)
+        x = fft.rfft(x, norm="forward")
+        
+        # Truncate input modes
+        x = resize_rfft(x, 2*self.modes1)
+
+        # Multiply relevant Fourier modes and take the real part
+        x = compl_mul(x, self.weights).real
+
+        # Integrate the conjugate product in physical space by summing Fourier coefficients
+        return 2*torch.sum(x, dim=-1) - x[..., 0]
+
+
+class LinearDecoder1d(nn.Module):
+    def __init__(self, in_channels, out_channels, modes1):
+        """
+        Fourier neural decoder layer for functions over the torus. Maps vectors to functions.
+        Inputs:    
+            in_channels  (int): dimension of input vectors
+            out_channels (int): total number of functions to extract
+        """
+        super(LinearDecoder1d, self).__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        # Number of Fourier modes to multiply, at most floor(N/2) + 1
+        self.modes1 = modes1 
+
+        self.scale = 1. / (self.in_channels * self.out_channels)
+        self.weights = nn.Parameter(self.scale * torch.rand(self.in_channels, self.out_channels, self.modes1 + 1, dtype=torch.cfloat))
+
+    def forward(self, x, s):
+        """
+        Input shape (of x):     (batch, in_channels, ...)
+        s            (int):     desired spatial resolution (nx,) of functions
+        Output shape:           (batch, out_channels, ..., nx)
+        """
+        # Multiply relevant Fourier modes
+        x = compl_mul(x[...,None].type(torch.cfloat), self.weights)
+        
+        # Zero pad modes
+        x = resize_rfft(x, s)
+        
+        # Return to physical space
+        return fft.irfft(x, n=s)
+    
 
 ################################################################
 #
@@ -97,17 +314,19 @@ class SpectralConv2d(nn.Module):
 
     def forward(self, x, s=None):
         """
-        Input shape (of x):     (batch, channels, nx_in, ny_in)
+        Input shape (of x):     (batch, channels, ..., nx_in, ny_in)
         s:                      (list or tuple, length 2): desired spatial resolution (s,s) in output space
         """
         # Original resolution
-        xsize = x.shape[-2:]
-        
+        out_ft = list(x.shape)
+        out_ft[1] = self.out_channels
+        xsize = out_ft[-2:]
+
         # Compute Fourier coeffcients (un-scaled)
         x = fft.rfft2(x)
 
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(x.shape[0], self.out_channels, xsize[-2], xsize[-1]//2 + 1, dtype=torch.cfloat, device=x.device)
+        out_ft = torch.zeros(*out_ft[:-2], xsize[-2], xsize[-1]//2 + 1, dtype=torch.cfloat, device=x.device)
         out_ft[..., :self.modes1, :self.modes2] = \
             compl_mul(x[..., :self.modes1, :self.modes2], self.weights1)
         out_ft[..., -self.modes1:, :self.modes2] = \
