@@ -154,7 +154,7 @@ def train_model(config):
         print(ep, train_err[ep],test_err[ep])
 
     # Save model
-    model_path = 'trainedModels/' + model_name
+    model_path = '/groups/astuart/mtrautne/learnHomData/trainedModels/' + model_name
     torch.save({'epoch': epochs,
             'model_state_dict': net.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),

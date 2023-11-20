@@ -31,6 +31,35 @@ def to_torch(x, to_float=True):
             x = x.astype(np.float32)
     return torch.from_numpy(x)
 
+def validate(f, fhat):
+    '''
+    Helper function to compute relative L^2 error of approximations.
+    Takes care of different array shape interpretations in numpy.
+
+    INPUTS:
+            f : array of high-fidelity function values
+         fhat : array of approximation values
+
+    OUTPUTS:
+        error : float, relative error
+    '''
+    f, fhat = np.asarray(f).flatten(), np.asarray(fhat).flatten()
+    return np.linalg.norm(f-fhat) / np.linalg.norm(f)
+
+
+def dataset_with_indices(cls):
+    """
+    Modifies the given Dataset class to return a tuple data, target, index
+    instead of just data, target.
+    # Reference: https://discuss.pytorch.org/t/how-to-retrieve-the-sample-indices-of-a-mini-batch/7948/19
+    """
+
+    def __getitem__(self, index):
+        data, target = cls.__getitem__(self, index)
+        return data, target, index
+
+    return type(cls.__name__, (cls,), {'__getitem__': __getitem__,})
+
 def dataset_with_indices(cls):
     """
     Modifies the given Dataset class to return a tuple data, target, index
