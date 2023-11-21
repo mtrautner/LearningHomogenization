@@ -1,22 +1,37 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle as pkl
+import pdb
+from utilities_module import *
 # import pdb
 
-data_path = '/groups/astuart/mtrautne/Singularities/'
-with open(data_path + 'data/voronoi_data_54tiny.pkl', 'rb') as handle:
-    A_input, chi1_true, chi2_true, x_ticks, y_ticks = pkl.load(handle)
+# Load data
+data_path = '/groups/astuart/mtrautne/learnHomData/data/'
+data_name = 'vor_res_data_256_tiny.pkl'
+full_data = pkl.load(open(data_path + data_name, 'rb'))
+A_input, chi1_true, chi2_true, x_ticks, y_ticks = full_data
+print('A_input.shape = ', A_input.shape)
+sgc = x_ticks.shape[1]
+data_input, data_output = format_data(A_input,chi1_true, chi2_true,sgc)
+# Plot a sample of each component of data_input and save it in Figures
+samp_i = 0
+fig, axes = plt.subplots(2,3, figsize=(20,10))
+for i in range(3):
+    axes[0,i].imshow(data_input[samp_i,i,:,:])
+    axes[0,i].set_title('Component ' + str(i) + ' of data_input')
+    axes[0,i].set_xticks([])
+    axes[0,i].set_yticks([])
 
-sgc = x_ticks.shape[1] # Ex: 512
-# Plot A, chi1, chi2 and save as pdf on a plot with 3 subplots
-print(A_input.shape)
-print(chi1_true.shape)
-print(chi2_true.shape)
-fig, axs = plt.subplots(1,3, figsize = (15,5))
-axs[0].imshow(np.reshape(A_input[0,:,0,0],(sgc, sgc)))
-axs[0].set_title('A')
-axs[1].imshow(np.reshape(chi1_true[:,0],(sgc, sgc)))
-axs[1].set_title('chi1')
-axs[2].imshow(np.reshape(chi2_true[:,0],(sgc, sgc)))
-axs[2].set_title('chi2')
-plt.savefig('/home/mtrautne/Singularities/Figures/vor_54_data_sample.pdf')
+for j in range(2):
+    axes[1,j].imshow(data_output[samp_i,j,:,:])
+    axes[1,j].set_title('Component ' + str(j) + ' of data_output')
+    axes[1,j].set_xticks([])
+    axes[1,j].set_yticks([])
+
+plt.savefig('../Figures/vor_data_input_output_res128.png')
+
+
+
+
+
+

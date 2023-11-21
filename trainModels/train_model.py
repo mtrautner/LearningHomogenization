@@ -30,8 +30,9 @@ def train_model(config):
     lr = config['lr']
     USE_CUDA = config['USE_CUDA']
 
-    gc.collect()
-    torch.cuda.empty_cache()
+    if USE_CUDA:
+        gc.collect()
+        torch.cuda.empty_cache()
 
     model_info_path = 'Trained_Models/' + model_name + '_info.pkl'
     model_path = 'Trained_Models/' + model_name

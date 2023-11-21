@@ -289,6 +289,25 @@ def compute_Abar(A, chi):
     Abars = torch.sum(integrand, dim = (-2,-1))*h**2
     return Abars
 
+def format_data(A_input, chi1_true, chi2_true, gridsize):
+    # Reshape data
+    sgc = gridsize
+    (N_data, N_nodes,dummy1, dummy2) = np.shape(A_input)
+    data_output1 = np.transpose(chi1_true[:,:]) # N_data, N_nodes
+    data_output2 = np.transpose(chi2_true[:,:]) # N_data, N_nodes
+    data_input = np.reshape(A_input, (N_data,sgc, sgc,4))
+    data_input = np.delete(data_input,2,axis = 3) # Symmetry of A: don't need both components
+    # Input shape (of x): (batch, channels_in, nx_in, ny_in)
+    data_input = np.transpose(data_input, (0,3,1,2))
+
+    #Output shape:      (batch, channels_out, nx_out, ny_out)
+    data_output1 = np.reshape(data_output1, (N_data,sgc, sgc))
+    data_output2 = np.reshape(data_output2, (N_data,sgc, sgc))
+    # concatenate
+    data_output = np.stack((data_output1,data_output2),axis = 3)
+    data_output = np.transpose(data_output, (0,3,1,2))
+
+    return data_input, data_output
 def frob_arithmetic_mean_A(A):
     '''
     A has shape (num_examples, 2,2, grid_edge, grid_edge)
