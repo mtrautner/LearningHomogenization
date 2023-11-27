@@ -13,6 +13,7 @@ import scipy.io
 # import hdf5storage
 import pdb
 import yaml
+import gc
 
 #################################################
 #
@@ -308,6 +309,24 @@ def format_data(A_input, chi1_true, chi2_true, gridsize):
     data_output = np.transpose(data_output, (0,3,1,2))
 
     return data_input, data_output
+
+def eval_net(net,d_out,gridsize,test_loader,b_size,USE_CUDA = False,N_data = 500):
+    if USE_CUDA:
+        gc.collect()
+        torch.cuda.empty_cache()
+    net.cuda()
+    y_test_approx_all = torch.zeros(N_data,d_out,gridsize,gridsize)
+    b = 0
+    with torch.no_grad():
+        for x,y in test_loader:
+            if USE_CUDA:
+                x = x.cuda()
+                y = y.cuda()
+            y_pred = net(x)
+            y_test_approx_all[b*b_size:(b+1)*b_size,:,:,:] = torch.squeeze(y_pred).cpu()
+            b += 1
+    return y_test_approx_all
+
 def frob_arithmetic_mean_A(A):
     '''
     A has shape (num_examples, 2,2, grid_edge, grid_edge)
@@ -315,6 +334,7 @@ def frob_arithmetic_mean_A(A):
     h = 1.0 / (A.size()[-1] - 1.0)
     mean_A = torch.sum(A,dim = (-2,-1))*h**2
     return torch.norm(mean_A, 'fro', dim = (1,2))
+
 
 def frob_harm_mean_A(A):
     '''

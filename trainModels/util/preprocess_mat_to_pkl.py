@@ -32,6 +32,8 @@ def convert_data(mat_data_dir,pkl_dir,data_name,N_data,small_dataset = False):
         chi2_interp = data_mat['chi2_interp']
 
         A_input[i,:,:,:] = np.transpose(A_mat,(2,0,1))
+        if i ==0:
+            print(A_input[0,:,:,:])
         chi1_data[:,i] = np.squeeze(chi1_interp)
         chi2_data[:,i] = np.squeeze(chi2_interp)
 

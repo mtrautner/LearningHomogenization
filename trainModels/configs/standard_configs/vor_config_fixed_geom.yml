@@ -1,0 +1,15 @@
+---
+# Data information
+data_path: '/groups/astuart/mtrautne/learnHomData/data/vor_fixed_geom_data.pkl'
+model_name: 'standard_models/vor_model_fixed_geom'
+
+
+# Parameters for training
+Ntotal: 10000
+N_train: 9500
+N_modes: 18
+width: 64
+epochs: 400
+batch_size: 20
+lr: 0.001
+USE_CUDA: True
