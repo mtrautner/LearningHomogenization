@@ -10,6 +10,7 @@ import yaml
 
 
 # Set font default
+# Set font default
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 matplotlib.rcParams['mathtext.fontset'] = 'custom'
@@ -19,9 +20,15 @@ CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
 matplotlib.rcParams['mathtext.rm'] = 'stix'
 matplotlib.rcParams['mathtext.it'] = 'stix'
 matplotlib.rcParams['mathtext.bf'] = 'stix'
-fontsize = 30
-shapes = ['o','s','D','v']
 
+plt.rcParams['font.family'] = 'serif'  # or 'DejaVu Serif'
+plt.rcParams['font.serif'] = ['Times New Roman']  # 'DejaVu Serif' 'serif' 'Times
+plt.rcParams['text.usetex'] = True
+plt.rcParams['text.latex.preamble'] = r'''
+\usepackage{amsmath}
+'''
+shapes = ['o','s','D','v']
+fontsize = 30
 '''
 
 '''
@@ -56,6 +63,8 @@ for gridsize in gridsizes:
                 H1_rel_mean_err = vor_err['H1_rel_mean']
                 all_vor_errors[gridsizes.index(gridsize),samp] = H1_rel_mean_err
 
+linewidth = 4
+markersize = 15
 # Plot errors
 smooth_stds = np.std(all_smooth_errors,axis=1)
 vor_stds = np.std(all_vor_errors,axis=1)
@@ -63,15 +72,16 @@ print(smooth_stds)
 # set fontsize
 matplotlib.rcParams.update({'font.size': fontsize})
 plt.figure(figsize = (10,10))
-plt.plot(gridsizes,all_vor_errors.mean(axis=1),label='Voronoi',linewidth=3,marker = shapes[0],color = CB_color_cycle[0])
-plt.plot(gridsizes,all_smooth_errors.mean(axis=1),label='Smooth',linewidth=3,marker = shapes[1],color = CB_color_cycle[1])
+plt.plot(gridsizes,all_vor_errors.mean(axis=1),label='Voronoi',linewidth=linewidth,marker = shapes[0],color = CB_color_cycle[0],markersize=markersize)
+plt.plot(gridsizes,all_smooth_errors.mean(axis=1),label='Smooth',linewidth=linewidth,marker = shapes[1],color = CB_color_cycle[1],markersize=markersize)
 # Add error bars
 plt.errorbar(gridsizes,all_vor_errors.mean(axis=1),yerr = vor_stds,color = CB_color_cycle[0],linewidth=3)
 plt.fill_between(gridsizes,all_vor_errors.mean(axis=1) - vor_stds,all_vor_errors.mean(axis=1) + vor_stds,color = CB_color_cycle[0],alpha = 0.2)
 plt.errorbar(gridsizes,all_smooth_errors.mean(axis=1),yerr=smooth_stds,color=CB_color_cycle[1],linewidth=3)
 plt.fill_between(gridsizes,all_smooth_errors.mean(axis=1) - smooth_stds,all_smooth_errors.mean(axis=1) + smooth_stds,color = CB_color_cycle[1],alpha = 0.2)
 plt.xlabel('Grid Size',fontsize=fontsize)
-plt.ylabel(r'$H^1$ Relative Error',fontsize = fontsize)
+plt.title('QQQ', color = 'white')
+plt.ylabel(r'Mean Relative $H^1$ Error',fontsize = fontsize)
 # set xticks
 plt.yscale('log')
 plt.xscale('log')
@@ -80,7 +90,7 @@ plt.xticks(gridsizes,fontsize=fontsize)
 plt.gca().xaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
 # flip x axis
 # set ylim
-plt.ylim([1e-3,1e0])
+plt.ylim([3e-3,1e0])
 # make more space on left
 plt.subplots_adjust(left=0.2)
 # add vertical dashed line at x = 128
