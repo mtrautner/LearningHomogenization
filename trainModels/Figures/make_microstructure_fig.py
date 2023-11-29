@@ -26,7 +26,7 @@ tickfontsize = 40
 fontsize = 60
 
 SMALL_SIZE = tickfontsize
-MEDIUM_SIZE = tickfontsize
+MEDIUM_SIZE = tickfontsize +10
 BIGGER_SIZE = fontsize
 
 plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
@@ -180,19 +180,24 @@ for j in range(4):
     # Set colorbars tick font size
     cbar0.ax.tick_params(labelsize=tickfontsize)
     cbar1.ax.tick_params(labelsize=tickfontsize)
+    cbar1.formatter.set_powerlimits((0, 0))
     cbar2.ax.tick_params(labelsize=tickfontsize)
+    cbar2.formatter.set_powerlimits((0, 0))
     cbar3.formatter.set_powerlimits((0, 0))
     cbar3.ax.tick_params(labelsize=tickfontsize)
     cbar4.ax.tick_params(labelsize=tickfontsize)
+    cbar4.formatter.set_powerlimits((0,0))
     cbar5.ax.tick_params(labelsize=tickfontsize)
+    cbar5.formatter.set_powerlimits((0,0))
     cbar6.ax.tick_params(labelsize=tickfontsize)
+    cbar6.formatter.set_powerlimits((0,0))
 
 
     for k in range(7):
         ax[j,k].set_xticks([])
         ax[j,k].set_yticks([])
-        ax[j,k].text(-0.1, 1.05, '('+letters[7*j+k]+')', transform=ax[j,k].transAxes, 
-                size=fontsize)
+        ax[j,k].text(0, 1.05, '('+letters[7*j+k]+')', transform=ax[j,k].transAxes, 
+                size=MEDIUM_SIZE, weight='bold')
 # Label rows: Smooth, Star, Square, Voronoi
 ax[0,0].set_ylabel('Smooth', fontsize = fontsize)
 ax[1,0].set_ylabel('Star', fontsize = fontsize)
