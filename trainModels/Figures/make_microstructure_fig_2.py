@@ -234,7 +234,7 @@ plt.savefig('microstructure_fig_chi_only.pdf')
 
 
 # Plot row of A examples
-fig, ax = plt.subplots(1,4, figsize = (60,15))
+fig, ax = plt.subplots(1,4, figsize = (40,10))
 for j in range(4):
     ax[j].imshow(get_A11(all_A[j]), cmap = cmap)
     ax[j].set_xticks([])
