@@ -38,3 +38,5 @@ This will also create a smaller .pkl file of just 20 data samples for easy debug
 
 # Train Model
 
+The FNO model implementation is taken mainly from https://github.com/nickhnelsen/FourierNeuralMappings . Additional functionalities have been added to the utils directory. 
+
