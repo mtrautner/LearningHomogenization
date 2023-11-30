@@ -46,19 +46,22 @@ plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 # Import tiny datasets
-smooth_file = '/groups/astuart/mtrautne/learnHomData/data/smooth_data_tiny.pkl'
-star_file = '/groups/astuart/mtrautne/learnHomData/data/star_data_tiny.pkl'
-sq_file = '/groups/astuart/mtrautne/learnHomData/data/sq_data_tiny.pkl'
-vor_file = '/groups/astuart/mtrautne/learnHomData/data/vor_data_tiny.pkl'
+smooth_file = '/groups/astuart/mtrautne/learnHomData/data/smooth_data.pkl'
+star_file = '/groups/astuart/mtrautne/learnHomData/data/star_data.pkl'
+sq_file = '/groups/astuart/mtrautne/learnHomData/data/sq_data.pkl'
+vor_file = '/groups/astuart/mtrautne/learnHomData/data/vor_data.pkl'
 smooth_model = '/groups/astuart/mtrautne/learnHomData/trainedModels/standard_models/smooth_model_0'
 star_model = '/groups/astuart/mtrautne/learnHomData/trainedModels/standard_models/star_model_0'
 sq_model = '/groups/astuart/mtrautne/learnHomData/trainedModels/standard_models/sq_model_0'
 vor_model = '/groups/astuart/mtrautne/learnHomData/trainedModels/standard_models/vor_model_0'
 
+smooth_samp_i = 3
+star_samp_i = 62
+sq_samp_i = 405
+vor_samp_i = 287
 
-i = -1
-
-def read_data(file,i):
+def read_data(file,test_i):
+    i = 9500 + test_i
     with open(file, 'rb') as f:
         A, chi_1, chi_2, x_ticks, y_ticks = pkl.load(f)
     true_A = A[i,:,:,:]
@@ -94,10 +97,10 @@ def compute_grad(x):
 # h = 1/sgc
 # net = FNO2d(modes1 = 18, modes2 = 18, width = 64, d_in =3, d_out = 2, s_outputspace=(128,128))
 
-# smooth_A, smooth_chi_true = read_data(smooth_file,i)
-# star_A, star_chi_true = read_data(star_file,i)
-# sq_A, sq_chi_true = read_data(sq_file,i)
-# vor_A, vor_chi_true = read_data(vor_file,i)
+# smooth_A, smooth_chi_true = read_data(smooth_file,smooth_samp_i)
+# star_A, star_chi_true = read_data(star_file,star_samp_i)
+# sq_A, sq_chi_true = read_data(sq_file,sq_samp_i)
+# vor_A, vor_chi_true = read_data(vor_file,vor_samp_i)
 
 
 # smooth_A, smooth_chi_true = format_data(smooth_A, smooth_chi_true,smooth_chi_true, sgc)
@@ -147,10 +150,11 @@ def get_grad_chi1(grad_chi):
     norm_grad = np.linalg.norm(chi1, axis = 0)
     return norm_grad
 
-# # Save data to plot
+# # # Save data to plot
 # with open('microstructure_fig_data.pkl', 'wb') as f:
 #     pkl.dump([all_A, all_chi_true, all_chi_pred, all_chi_error, all_grad_chi_true, all_grad_chi_pred, all_grad_chi_error], f)
 
+# print('data saved')
 with open('microstructure_fig_data.pkl', 'rb') as f:
     all_A, all_chi_true, all_chi_pred, all_chi_error, all_grad_chi_true, all_grad_chi_pred, all_grad_chi_error = pkl.load(f)
 
@@ -226,9 +230,9 @@ ax[0,5].set_title(r'Error $\nabla \chi_1$', fontsize = fontsize)
 
 plt.tight_layout()
 # Reduce horizontal space between subplots
-plt.subplots_adjust(wspace=0.07, hspace=0.095)
+plt.subplots_adjust(wspace=0.07, hspace=0.098)
 # make left border zero
-plt.subplots_adjust(left=0.006,bottom = 0.005,right = 0.99, top = 0.97)
+plt.subplots_adjust(left=0.007,bottom = 0.005,right = 0.98, top = 0.97)
 # pdf quality high
 plt.savefig('microstructure_fig_chi_only.pdf')
 
