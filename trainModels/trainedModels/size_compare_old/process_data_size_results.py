@@ -105,7 +105,7 @@ y = np.log(smooth_mean_errors)
 m, b = np.polyfit(x, y, 1)
 print('Smooth slope: ', m)
 # add smoth slope to plot
-plt.text(0.5,0.2,r'Smooth slope: ' + str(round(m,2)),fontsize=fontsize,transform=plt.gca().transAxes)
+plt.text(0.5,0.22,r'Smooth slope: ' + str(round(m,2)),fontsize=fontsize,transform=plt.gca().transAxes)
 y = np.log(vor_mean_errors)
 m, b = np.polyfit(x, y, 1)
 print('Voronoi slope: ', m)
