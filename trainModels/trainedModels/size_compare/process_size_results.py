@@ -5,6 +5,7 @@ import os
 import yaml
 
 # Set font default
+# Set font default
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 matplotlib.rcParams['mathtext.fontset'] = 'custom'
@@ -14,6 +15,16 @@ CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
 matplotlib.rcParams['mathtext.rm'] = 'stix'
 matplotlib.rcParams['mathtext.it'] = 'stix'
 matplotlib.rcParams['mathtext.bf'] = 'stix'
+
+plt.rcParams['font.family'] = 'serif'  # or 'DejaVu Serif'
+plt.rcParams['font.serif'] = ['Times New Roman']  # 'DejaVu Serif' 'serif' 'Times
+plt.rcParams['text.usetex'] = True
+plt.rcParams['text.latex.preamble'] = r'''
+\usepackage{amsmath}
+'''
+
+linewidth = 4
+markersize = 15
 '''
     This script is used to process the results of the size comparison experiment.
     Takes the error.yaml files from each model and plots the results.
@@ -33,9 +44,13 @@ for m_index in range(24):
     for sample in range(5):
         smooth_error_file = smooth_yaml_path + str(m_index) + '_' + str(sample) + '_errors.yml'
         # read error file and extract H1 mean error
-        with open(smooth_error_file, 'r') as f:
-            error_dict = yaml.load(f, Loader=yaml.FullLoader)
-            smooth_errors[m_index, sample] = error_dict['H1_rel_mean']
+        try: 
+            with open(smooth_error_file, 'r') as f:
+                error_dict = yaml.load(f, Loader=yaml.FullLoader)
+                smooth_errors[m_index, sample] = error_dict['H1_rel_mean']
+        except:
+            # print index and sample
+            print("smooth:", m_index, sample)
         vor_error_file = vor_yaml_path + str(m_index) + '_' + str(sample) + '_errors.yml'
         # read error file and extract H1 mean error
         try:
@@ -43,17 +58,20 @@ for m_index in range(24):
                 error_dict = yaml.load(f, Loader=yaml.FullLoader)
                 vor_errors[m_index, sample] = error_dict['H1_rel_mean']
         except:
-            pass
+            print("vor: ", m_index, sample)
         # Figure out the mode and size
         smooth_config_file = smooth_yaml_path + str(m_index) + '_' + str(sample) + '_config.yml'
-        with open(smooth_config_file, 'r') as f:
-            config_dict = yaml.load(f, Loader=yaml.FullLoader)
-            mode = config_dict['N_modes']
-            width = config_dict['width']
-            size = mode * width
-            mode_index = modes.index(mode)
-            size_index = model_sizes.index(size)
-            smooth_errors_by_mode_and_size[mode_index, size_index, sample] = smooth_errors[m_index, sample]
+        try:
+            with open(smooth_config_file, 'r') as f:
+                config_dict = yaml.load(f, Loader=yaml.FullLoader)
+                mode = config_dict['N_modes']
+                width = config_dict['width']
+                size = mode * width
+                mode_index = modes.index(mode)
+                size_index = model_sizes.index(size)
+                smooth_errors_by_mode_and_size[mode_index, size_index, sample] = smooth_errors[m_index, sample]
+        except:
+            print("smooth: ", m_index, sample)
         vor_config_file = vor_yaml_path + str(m_index) + '_' + str(sample) + '_config.yml'
         try:
             with open(vor_config_file, 'r') as f:
@@ -82,9 +100,9 @@ print(vor_errors_by_mode_and_size)
 fig, axes = plt.subplots(1,2, figsize=(20,10))
 # Make all font size bigger
 fontsize = 30
-y_max = max(max(smooth_mean_errors.flatten()), max(vor_mean_errors.flatten()))
-y_min = min(min(smooth_mean_errors.flatten()), min(vor_mean_errors.flatten()))
-
+y_max = max(max(smooth_mean_errors.flatten()), max(vor_mean_errors.flatten())+ max(2*vor_std_errors.flatten()))
+y_min = min(min(smooth_mean_errors.flatten()) - 4*min(smooth_std_errors.flatten()), min(vor_mean_errors.flatten()))
+# not here: 11_4
 for ax in axes:
     ax.tick_params(axis='both', which='major', labelsize=fontsize)
     ax.tick_params(axis='both', which='minor', labelsize=fontsize)
@@ -102,16 +120,16 @@ colors = CB_color_cycle[0:4]
 shapes = ['o', 's', 'D', 'v']
 for i in range(4):
     ax1 = axes[0]
-    ax1.plot(modes, smooth_mean_errors[:,i], marker=shapes[i], label='Size = ' + str(model_sizes[i]), color=colors[i], markersize=8, linewidth=2.5)
-    ax1.errorbar(modes, smooth_mean_errors[:,i], yerr=smooth_std_errors[:,i], color=colors[i])
-    # fill between for errors
-    ax1.fill_between(modes, smooth_mean_errors[:,i] - smooth_std_errors[:,i], smooth_mean_errors[:,i] + smooth_std_errors[:,i], alpha=0.2, color=colors[i])
+    ax1.plot(modes, smooth_mean_errors[:,i], marker=shapes[i], label='Size = ' + str(model_sizes[i]), color=colors[i], markersize=markersize, linewidth=linewidth)
+    ax1.errorbar(modes, smooth_mean_errors[:,i], yerr=2*smooth_std_errors[:,i], color=colors[i])
+    # fill between for er
+    ax1.fill_between(modes, smooth_mean_errors[:,i] - 2*smooth_std_errors[:,i], smooth_mean_errors[:,i] + 2*smooth_std_errors[:,i], alpha=0.2, color=colors[i])
     ax1.set_title('Smooth Microstructure', fontsize=fontsize)
     ax2 = axes[1]
-    ax2.plot(modes, vor_mean_errors[:,i], marker=shapes[i], label='Size = ' + str(model_sizes[i]), color=colors[i], markersize=8, linewidth=2.5)
-    ax2.errorbar(modes, vor_mean_errors[:,i], yerr=vor_std_errors[:,i], color=colors[i])
+    ax2.plot(modes, vor_mean_errors[:,i], marker=shapes[i], label='Size = ' + str(model_sizes[i]), color=colors[i], markersize=markersize, linewidth=linewidth)
+    ax2.errorbar(modes, vor_mean_errors[:,i], yerr=2*vor_std_errors[:,i], color=colors[i])
     # fill between for errors
-    ax2.fill_between(modes, vor_mean_errors[:,i] - vor_std_errors[:,i], vor_mean_errors[:,i] + vor_std_errors[:,i], alpha=0.2, color=colors[i])
+    ax2.fill_between(modes, vor_mean_errors[:,i] - 2*vor_std_errors[:,i], vor_mean_errors[:,i] + 2*vor_std_errors[:,i], alpha=0.2, color=colors[i])
     ax2.set_title('Voronoi Microstructure', fontsize=fontsize)
     
 # Top Left legend
@@ -119,8 +137,9 @@ axes[0].legend(loc=2, fontsize=fontsize)
 # Bottom Right legend
 axes[1].legend(loc=3, fontsize=fontsize)
 
-# Pad space between subplots
-plt.subplots_adjust(wspace=0.4)
+# less edge space
+plt.tight_layout()
+
 
 plt.savefig('../../Figures/size_compare.pdf')
 plt.savefig('../../Figures/size_compare.svg')
